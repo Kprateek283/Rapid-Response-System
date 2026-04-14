@@ -1,0 +1,58 @@
+services:
+  # 1. PostgreSQL 18 + PostGIS 3.6
+  postgres:
+    image: postgis/postgis:18-3.6
+    container_name: rapid_postgres
+    environment:
+      POSTGRES_USER: rapid_user
+      POSTGRES_PASSWORD: rapid_password
+      POSTGRES_DB: rapid_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # 2. Redis 7
+  redis:
+    image: redis:7-alpine
+    container_name: rapid_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # 3. RabbitMQ 3 (with UI)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rapid_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rapid_user
+      RABBITMQ_DEFAULT_PASS: rapid_password
+    ports:
+      - "5672:5672"   
+      - "15672:15672" 
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+ # 4. MinIO (Storage Emulator)
+  minio:
+    image: minio/minio
+    container_name: rapid_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: rapid_admin
+      MINIO_ROOT_PASSWORD: rapid_password_123
+    ports:
+      - "9002:9000"   
+      - "9001:9001"   
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+volumes:
+  pg_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
