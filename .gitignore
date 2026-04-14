@@ -1,0 +1,54 @@
+# =========================
+# Operating System & IDEs
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# =========================
+# Environment Variables (CRITICAL)
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Flutter / Dart
+# =========================
+frontend-flutter/.dart_tool/
+frontend-flutter/.flutter-plugins
+frontend-flutter/.flutter-plugins-dependencies
+frontend-flutter/.pub-cache/
+frontend-flutter/.pub/
+frontend-flutter/build/
+frontend-flutter/**/*.log
+
+# =========================
+# Golang
+# =========================
+backend-go/bin/
+backend-go/obj/
+backend-go/*.exe
+backend-go/*.test
+backend-go/vendor/
+
+# =========================
+# Python / AI Service
+# =========================
+ai-python/__pycache__/
+ai-python/*.py[cod]
+ai-python/*$py.class
+ai-python/.pytest_cache/
+ai-python/venv/
+ai-python/env/
+ai-python/.venv/
+
+# =========================
+# Docker & Infrastructure
+# =========================
+infrastructure/pg_data/
+infrastructure/redis_data/
+infrastructure/minio_data/
+infrastructure/rabbitmq_data/
