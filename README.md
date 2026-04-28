@@ -25,7 +25,7 @@ Make sure you have the following installed:
 
 ---
 
-## ⚙️ Setup Instructions
+## ⚙️ Setup Instructions :
 
 ### 1. Clone the Repository
 
