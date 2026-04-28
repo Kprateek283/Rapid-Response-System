@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS idx_guests_room;
+DROP INDEX IF EXISTS idx_events_incident;
+DROP INDEX IF EXISTS idx_dispatch_staff;
+DROP INDEX IF EXISTS idx_dispatch_incident;
+DROP INDEX IF EXISTS idx_incidents_status;
+DROP INDEX IF EXISTS idx_incidents_hotel;
+DROP TABLE IF EXISTS incident_reports;
+DROP TABLE IF EXISTS incident_events;
+DROP TABLE IF EXISTS dispatch_assignments;
+DROP TABLE IF EXISTS incidents;
+DROP TABLE IF EXISTS guests;

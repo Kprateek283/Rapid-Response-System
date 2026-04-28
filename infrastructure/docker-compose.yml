@@ -8,9 +8,9 @@ services:
       POSTGRES_PASSWORD: rapid_password
       POSTGRES_DB: rapid_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresq
     restart: unless-stopped
 
   # 2. Redis 7
@@ -31,8 +31,8 @@ services:
       RABBITMQ_DEFAULT_USER: rapid_user
       RABBITMQ_DEFAULT_PASS: rapid_password
     ports:
-      - "5672:5672"   
-      - "15672:15672" 
+      - "5673:5672"   
+      - "15673:15672" 
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped

@@ -1,0 +1,354 @@
+{
+  "info": {
+    "name": "Rapid Crisis Response API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Full E2E test collection for the Rapid Crisis Response backend. Run requests in order (top to bottom) — tokens and IDs are auto-extracted."
+  },
+  "variable": [
+    {"key": "base_url", "value": "http://localhost:8080/api/v1"},
+    {"key": "admin_token", "value": ""},
+    {"key": "group_id", "value": ""},
+    {"key": "hotel_id", "value": ""},
+    {"key": "room_id", "value": ""},
+    {"key": "mgr_token", "value": ""},
+    {"key": "guest_id", "value": ""},
+    {"key": "guest_token", "value": ""},
+    {"key": "incident_id", "value": ""},
+    {"key": "staff_token", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "0. Health Check",
+      "item": [
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8080/ping"},
+            "header": []
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Server is up', function(){ pm.response.to.have.status(200); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login as Super Admin",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/auth/login"},
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"email\":\"superadmin@google-hackathon.com\",\"password\":\"superadmin123\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.token) pm.collectionVariables.set('admin_token', json.token);", "pm.test('Login success', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "Create Group Manager",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/auth/create-group-manager"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"email\":\"grpmgr@test.com\",\"password\":\"pass123\",\"name\":\"Group Manager\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Created group manager', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]}}]
+        },
+        {
+          "name": "Create Hotel Manager",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/auth/create-hotel-manager"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"email\":\"hotelmgr@test.com\",\"password\":\"pass123\",\"name\":\"Hotel Manager\",\"hotel_id\":\"{{hotel_id}}\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Created hotel manager', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]}}]
+        },
+        {
+          "name": "Login as Hotel Manager",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/auth/login"},
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"email\":\"hotelmgr@test.com\",\"password\":\"pass123\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.token) pm.collectionVariables.set('mgr_token', json.token);", "pm.test('Manager login', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "Logout (test token blacklist)",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/auth/logout"},
+            "header": [{"key": "Authorization", "value": "Bearer {{mgr_token}}"}]
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Logout success', function(){ pm.response.to.have.status(200); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "2. IAM Setup",
+      "item": [
+        {
+          "name": "Create Group",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/admin/groups"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"name\":\"Luxury Hotels Group\",\"contact_email\":\"admin@luxuryhotels.com\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.data && json.data.group_id) pm.collectionVariables.set('group_id', json.data.group_id);", "pm.test('Group created', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]}}]
+        },
+        {
+          "name": "Create Hotel",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/admin/hotels"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"group_id\":\"{{group_id}}\",\"name\":\"Grand Bangalore Hotel\",\"address\":\"123 MG Road, Bangalore\",\"timezone\":\"Asia/Kolkata\",\"coordinates\":{\"lat\":12.9716,\"lon\":77.5946}}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.data && json.data.hotel_id) pm.collectionVariables.set('hotel_id', json.data.hotel_id);", "pm.test('Hotel created', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]}}]
+        },
+        {
+          "name": "Bulk Create Rooms",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/admin/hotels/{{hotel_id}}/rooms/bulk"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"count\":3,\"rooms\":[{\"room_number\":\"101\",\"floor_level\":1,\"qr_index\":1001},{\"room_number\":\"102\",\"floor_level\":1,\"qr_index\":1002},{\"room_number\":\"201\",\"floor_level\":2,\"qr_index\":2001}]}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.data && json.data.room_ids && json.data.room_ids.length > 0) pm.collectionVariables.set('room_id', json.data.room_ids[0]);", "pm.test('Rooms created', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]}}]
+        },
+        {
+          "name": "Bulk Create Staff",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/admin/hotels/{{hotel_id}}/staff/bulk"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"count\":2,\"staff\":[{\"name\":\"Guard Alpha\",\"phone_number\":\"+919876543210\",\"role\":\"guard\",\"skill_profile\":{\"first_aid\":0.4,\"combat\":0.9,\"crowd_control\":0.8,\"languages\":[\"hi\",\"en\"]}},{\"name\":\"Nurse Beta\",\"phone_number\":\"+919876543211\",\"role\":\"medical_staff\",\"skill_profile\":{\"first_aid\":0.95,\"combat\":0.1,\"crowd_control\":0.3,\"languages\":[\"en\"]}}]}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Staff created', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "3. Guest Onboarding",
+      "item": [
+        {
+          "name": "Check-In Guest",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/admin/hotels/{{hotel_id}}/rooms/{{room_id}}/checkin"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"guest_name\":\"Jane Doe\",\"expected_checkout\":\"2026-04-30T11:00:00Z\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.data && json.data.guest_id) pm.collectionVariables.set('guest_id', json.data.guest_id);", "pm.test('Guest checked in', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "QR Scan (get Guest JWT)",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/onboard/scan"},
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"room_number\":\"101\",\"qr_index\":1001,\"device_fingerprint\":\"test_fcm_token_123\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.data && json.data.token) pm.collectionVariables.set('guest_token', json.data.token);", "pm.test('QR scan success', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "BLE Pair Status",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/onboard/pair-status"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{guest_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"status\":\"connected\",\"battery_level\":85}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('BLE paired', function(){ pm.response.to.have.status(200); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "4. Incident Lifecycle",
+      "item": [
+        {
+          "name": "Trigger Incident",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/trigger/init"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{guest_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"room_id\":\"{{room_id}}\",\"trigger_source\":\"MANUAL_PHONE\",\"gps_lat\":12.9716,\"gps_lng\":77.5946}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if(json.data && json.data.incident_id) pm.collectionVariables.set('incident_id', json.data.incident_id);", "pm.test('Incident created', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"]}}]
+        },
+        {
+          "name": "Media Ready",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/media-ready"},
+            "header": [{"key": "Authorization", "value": "Bearer {{guest_token}}"}]
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Media ready accepted', function(){ pm.response.to.have.status(202); });"]}}]
+        },
+        {
+          "name": "SMS Webhook (Twilio)",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/trigger/sms-webhook"},
+            "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
+            "body": {"mode": "urlencoded", "urlencoded": [{"key": "Body", "value": "SOS|ROOM:101|LAT:12.96|LNG:77.74|BLE_PRESS"}, {"key": "From", "value": "+919999999999"}]}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('SMS processed', function(){ pm.response.to.have.status(200); pm.expect(pm.response.text()).to.include('SOS received'); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "5. Dispatch & Transit",
+      "item": [
+        {
+          "name": "Dispatch Accept",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/dispatch/accept"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"battery_level\":82,\"current_lat\":12.9691,\"current_lng\":77.5940}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Dispatch accepted', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "Dispatch Decline",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/dispatch/decline"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"reason\":\"BATTERY_CRITICAL\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Dispatch declined', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "Transit Ping 1",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/transit/ping"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"lat\":12.9695,\"lng\":77.5943,\"timestamp\":\"2026-04-28T03:20:15Z\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Ping tracked', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "Transit Ping 2",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/transit/ping"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"lat\":12.9700,\"lng\":77.5945,\"timestamp\":\"2026-04-28T03:20:20Z\"}"}
+          }
+        },
+        {
+          "name": "Transit Ping 3",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/transit/ping"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"lat\":12.9710,\"lng\":77.5946,\"timestamp\":\"2026-04-28T03:20:25Z\"}"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Arrival & Assessment",
+      "item": [
+        {
+          "name": "Staff Arrive",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/staff/arrive"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"lat\":12.9716,\"lng\":77.5946,\"timestamp\":\"2026-04-28T03:22:15Z\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Arrival verified', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "Submit Ground Truth",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/staff/ground-truth"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"manual_severity\":2,\"scout_notes\":\"Guest tripped and dropped phone. Minor bruise.\",\"media_urls\":[]}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Ground truth accepted', function(){ pm.response.to.have.status(202); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "7. Branching Actions",
+      "item": [
+        {
+          "name": "Request Backup",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/action/backup"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"additional_roles_needed\":{\"guard\":1,\"medical_staff\":1},\"reason_audio_url\":\"\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Backup requested', function(){ pm.response.to.have.status(202); });"]}}]
+        },
+        {
+          "name": "Escalate to Police",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/action/escalate"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"target_authority\":\"POLICE\",\"reason\":\"Suspicious activity detected.\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Escalation started', function(){ pm.response.to.have.status(202); });"]}}]
+        },
+        {
+          "name": "Abort Escalation",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/action/escalate/abort"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"reason\":\"False alarm. Prop weapon identified.\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Escalation aborted', function(){ pm.response.to.have.status(200); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "8. Resolution & Closure",
+      "item": [
+        {
+          "name": "Propose Resolution",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/action/resolve/propose"},
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{admin_token}}"}],
+            "body": {"mode": "raw", "raw": "{\"proposed_by_role\":\"guard\",\"resolution_notes\":\"Guest found dropped medication. Stable now.\"}"}
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Resolution proposed', function(){ pm.response.to.have.status(200); });"]}}]
+        },
+        {
+          "name": "Confirm Resolution (Closure Cascade)",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/incident/{{incident_id}}/action/resolve/confirm"},
+            "header": [{"key": "Authorization", "value": "Bearer {{guest_token}}"}]
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Incident resolved', function(){ pm.response.to.have.status(200); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "9. Guest Checkout",
+      "item": [
+        {
+          "name": "Check-Out Guest",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/admin/hotels/{{hotel_id}}/rooms/{{room_id}}/checkout"},
+            "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+          },
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Guest checked out', function(){ pm.response.to.have.status(200); });"]}}]
+        }
+      ]
+    }
+  ]
+}
